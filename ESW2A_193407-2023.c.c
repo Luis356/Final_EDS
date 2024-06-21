@@ -1,3 +1,9 @@
+/*
+AUTOR:  LUIS RICARDO DE SOUZA - ESW 2.º SEMESTRE - 193407
+DATA:   18/06/2024
+OBJETIVO:   SISTEMA DE GERENCIAMENTO DE PRODUTOS E MOVIMENTAÇÕES
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
@@ -41,7 +47,7 @@ typedef struct
 typedef struct
 {
     char dt_movim[11];
-    int dc_prod_movim;
+    int cd_prod_movim;
     char tp_movim;
     float qt_movim;
     float vl_unit_movim;
@@ -265,7 +271,7 @@ void TelaAlteraProdutoCampos()
 void LimparLinha(int linha)
 {
     gotoxy(2, linha);
-    printf("                                                            "); // 80 espaços para limpar a linha
+    printf("                                                                 "); // 80 espaços para limpar a linha
     gotoxy(1, 23);
     printf("|");
     gotoxy(80, 23);
@@ -295,13 +301,55 @@ void TelaListaVazia(char *Mensagem)
     FUNÇÕES UTILIZADAS NO SISTEMA
 */
 
+// Função para verificar se a data está no formato correto (nn/nn/nnnn)
+int VerificaFormatoData(const char *data)
+{
+    // Verifica o comprimento
+    if (strlen(data) != 10)
+    {
+        return 0;
+    }
+
+    // Verifica os caracteres específicos
+    if (data[2] != '/' || data[5] != '/')
+    {
+        return 0;
+    }
+
+    // Verifica se todos os outros caracteres são dígitos
+    for (int i = 0; i < 10; i++)
+    {
+        if (i != 2 && i != 5 && !isdigit(data[i]))
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+void VerificaData(char *data, char *mensagem)
+{
+    do
+    {
+        scanf("%10s", data);
+        if (!VerificaFormatoData(data))
+        {
+            gotoxy(2, 21);
+            printf("Formato de data invalido. Tente novamente.");
+            MostraMSG(mensagem);
+        }
+    } while (!VerificaFormatoData(data));
+    LimparLinha(21);
+}
+
 //  DECLARAÇÃO DA FUNÇÃO DE MENU DOS PRODUTOS
-void MenuProdutos(ListaProduto *ListaProdutos);
+void MenuProdutos(ListaProduto *ListaProdutos, ListaMovimentacao *ListaMovimentacoes);
 void MenuAlteraProdutos(ListaProduto *ListaSimplesProduto);
 
 TipoApontadorProduto BuscaProdutoCodigo(ListaProduto *ListaBuscaProduto, int codigo) //  FUNÇÃO PARA BUSCAR UM PRODUTO POR CÓDIGO
 {
-    TipoApontadorProduto aux = ListaBuscaProduto->PrimeiroProduto->proximo;
+    TipoApontadorProduto aux = ListaBuscaProduto->PrimeiroProduto;
     while (aux != NULL)
     {
         if (aux->conteudo.cd_produto == codigo)
@@ -362,8 +410,8 @@ Produto LerDadosProdutos(ListaProduto *VerificaEntrada, char *tipoInclusao) //  
     gotoxy(41, 12);
     printf("%s", NovoProduto.ds_unid_med); // PRINTA UNIDADE DE MEDIDA
 
-    MostraMSG(" Data de validade do produto: ");
-    scanf("%s", NovoProduto.dt_validade); // DATA DE VALIDADE
+    MostraMSG("Data de validade do produto: ");
+    VerificaData(NovoProduto.dt_validade, "Data de validade do produto: "); // LÊ E VERIFICA A DATA
     LimparLinha(23);
     gotoxy(41, 14);
     printf("%s", NovoProduto.dt_validade); // PRINTA UNIDADE DE MEDIDA
@@ -443,13 +491,18 @@ void OrdenaCodigo(TipoApontadorProduto *Referencia) //  FUNÇÃO PARA ORDENAR A 
 
 int comparaDescricao(TipoApontadorProduto Pri_Produto, TipoApontadorProduto Sec_Produto) // FUNÇÃO PARA COMPARAR AS DESCRIÇÕES DOS PRODUTOS
 {
-    return strcmp(Pri_Produto->conteudo.ds_produto, Sec_Produto->conteudo.ds_produto);
+    /*
+    RETORNA NEGATIVO SE O PRIMEIRO VALOR É MENOR
+    RETORNA ZERO SE FOREM IGUAIS
+    RETORNA POSITIVO SE O SEGUNDO FOR MAIOR
+    */
+    return strcmp(Pri_Produto->conteudo.ds_produto, Sec_Produto->conteudo.ds_produto); //  RETORNA UM VALOR NEGATIVO SE A PRIMEIRA FU
 }
 
 void OrdenaDescricao(ListaProduto *ListaDescricao) // FUNÇÃO PARA ORDENAR A LISTA PELA DESCRIÇÃO DOS PRODUTOS
 {
 
-    if (ListaDescricao == NULL || ListaDescricao->PrimeiroProduto == NULL || ListaDescricao->PrimeiroProduto->proximo == NULL)
+    if (ListaDescricao == NULL || ListaDescricao->PrimeiroProduto == NULL || ListaDescricao->PrimeiroProduto->proximo == NULL) // VERIFICA SE ESTÁ VAZIA OU COM APÉNAS UM PRODUTO
     {
         return;
     }
@@ -463,34 +516,39 @@ void OrdenaDescricao(ListaProduto *ListaDescricao) // FUNÇÃO PARA ORDENAR A LI
         atual = ListaDescricao->PrimeiroProduto;
         prox = atual->proximo;
 
+        //  PERCORRE A LISTA ATÉ O FINAL
         while (prox != NULL)
         {
+            //  COMPARA A DESCRIÇÃO DO PRODUTO ATUAL E PROXIMO
             if (comparaDescricao(atual, prox) > 0)
             {
+                //  SE ERRADA, TROCA OS ELEMENTOS
                 if (anterior != NULL)
                 {
-                    anterior->proximo = prox;
+                    anterior->proximo = prox; // ATUALIZA O PROXIMO DO ANTERIOR PARA APONTAR PARA PROXIMO
                 }
                 else
                 {
-                    ListaDescricao->PrimeiroProduto = prox;
+                    ListaDescricao->PrimeiroProduto = prox; //  ATUALIZA O INICIO DA LISTA PARA PROXIMO
                 }
 
+                //  TROCA OS APONTADORES
                 atual->proximo = prox->proximo;
                 prox->proximo = atual;
 
+                //  ATUALIZA OS PONTEIROS
                 anterior = prox;
                 prox = atual->proximo;
-                trocado = 1;
+                trocado = 1; // MARCA QUE HOUVE UMA TROCA
             }
             else
-            {
+            { // SE NÃO HOUVE TROCA, AVANÇA OS PONTEIROS
                 anterior = atual;
                 atual = prox;
                 prox = prox->proximo;
             }
         }
-    } while (trocado);
+    } while (trocado); // REPETE ENQUANTO HOUVER TROCAS
 }
 
 void IniciarListaProduto(ListaProduto *ListaProduto) //  FUNÇÃO PARA INICIAR A LISTA DE PRODUTOS
@@ -506,7 +564,7 @@ void CadastraProduto(ListaProduto *ListaCadastro, int opcCadastro) // FUNÇÃO P
     TipoApontadorProduto novoNo = (TipoApontadorProduto)malloc(sizeof(TipoProduto));
     if (novoNo == NULL)
     {
-        printf("Erro ao alocar memória para o novo produto.\n");
+        printf("Erro ao alocar memoria para o novo produto.\n");
         exit(1);
     }
     novoNo->conteudo = novoProduto;
@@ -566,7 +624,7 @@ void CadastraProduto(ListaProduto *ListaCadastro, int opcCadastro) // FUNÇÃO P
     break;
 
     default:
-        printf("Opção inválida!\n");
+        printf("Opcao invalida!\n");
         free(novoNo);
         return;
         break;
@@ -574,41 +632,73 @@ void CadastraProduto(ListaProduto *ListaCadastro, int opcCadastro) // FUNÇÃO P
     RetornaMenu();
 }
 
-void ExcluiProduto(ListaProduto *ListaExclusao, int opcExclusao) // FUNÇÃO PARA EXCLUIR PRODUTOS
+// Função para verificar se há movimentações registradas para o produto
+int ExisteMovimentacao(int codigoProduto, ListaMovimentacao *ListaMov)
+{
+    TipoApontadorMovimentacao atual = ListaMov->Pri_movim;
+    while (atual != NULL)
+    {
+        if (atual->ctMovimentacao.cd_prod_movim == codigoProduto)
+        {
+            return 1; // Existe movimentação para o produto
+        }
+        atual = atual->movProximo;
+    }
+    return 0; // Não existe movimentação para o produto
+}
+
+void ExcluiProduto(ListaProduto *ListaExclusao, ListaMovimentacao *ListaMov, int opcExclusao) // FUNÇÃO PARA EXCLUIR PRODUTOS
 {
 
     if (ListaExclusao == NULL || ListaExclusao->PrimeiroProduto == NULL)
     {
         TelaListaVazia("Exluir produtos");
+        return;
     }
 
     TelaBase("Excluir produtos");
 
-    char confirmacao;
-    MostraMSG(" Deseja realmente excluir o produto? (S/N): ");
-    confirmacao = getch();
+    int codigoProduto = -1; // Inicializa com valor inválido
 
-    if (confirmacao != 'S' && confirmacao != 's')
+    if (opcExclusao == 2)
     {
-        LimparLinha(21);
-        gotoxy(2, 21);
-        printf("Operação de exclusão cancelada.");
-        RetornaMenu();
-        return;
+        codigoProduto = LerEntradaInteiro("Digite o codigo do produto para exclusao: ");
     }
 
+    char confirmacao;
+    TipoApontadorProduto atual = ListaExclusao->PrimeiroProduto;
+    TipoApontadorProduto anterior = NULL;
     switch (opcExclusao)
     {
     // REMOVE O PRODUTO NO FINAL
     case 1:
     {
-        TipoApontadorProduto atual = ListaExclusao->PrimeiroProduto;
-        TipoApontadorProduto anterior = NULL;
+
+        if (ExisteMovimentacao(atual->conteudo.cd_produto, ListaMov))
+        {
+            gotoxy(2, 21);
+            printf("Nao e possivel excluir o produto. Existem movimentacoes registradas.\n");
+            RetornaMenu();
+            return;
+        }
+
+        MostraMSG(" Deseja realmente excluir o produto? (S/N): ");
+        confirmacao = getch();
+
+        if (confirmacao != 'S' && confirmacao != 's')
+        {
+            LimparLinha(21);
+            gotoxy(2, 21);
+            printf("Operação de exclusao cancelada.");
+            RetornaMenu();
+            return;
+        }
         while (atual->proximo != NULL)
         {
             anterior = atual;
             atual = atual->proximo;
         }
+
         if (anterior == NULL)
         {
             ListaExclusao->PrimeiroProduto = NULL;
@@ -625,27 +715,40 @@ void ExcluiProduto(ListaProduto *ListaExclusao, int opcExclusao) // FUNÇÃO PAR
     }
     break;
 
-    // REMOVE O PRODUTO NA POSIÇÃO ESPECIFICA
     case 2:
     {
-        int posicao = LerEntradaInteiro("Digite a posicao para retirar o produto: ");
-        if (posicao < 1)
+        if (ExisteMovimentacao(codigoProduto, ListaMov))
         {
-            printf("Posição inválida.\n");
+            gotoxy(2, 21);
+            printf("Nao e possivel excluir o produto. Existem movimentacoes registradas.\n");
+            RetornaMenu();
             return;
         }
-        TipoApontadorProduto atual = ListaExclusao->PrimeiroProduto;
-        TipoApontadorProduto anterior = NULL;
-        for (int i = 1; atual != NULL && i < posicao; i++)
+
+        MostraMSG(" Deseja realmente excluir o produto? (S/N): ");
+        confirmacao = getch();
+
+        if (confirmacao != 'S' && confirmacao != 's')
+        {
+            LimparLinha(21);
+            gotoxy(2, 21);
+            printf("Operacao de exclusao cancelada.");
+            RetornaMenu();
+            return;
+        }
+
+        while (atual != NULL && atual->conteudo.cd_produto != codigoProduto)
         {
             anterior = atual;
             atual = atual->proximo;
         }
+
         if (atual == NULL)
         {
-            printf("Posição inválida.\n");
+            printf("Codigo do produto nao encontrado.\n");
             return;
         }
+
         if (anterior == NULL)
         {
             ListaExclusao->PrimeiroProduto = atual->proximo;
@@ -654,21 +757,43 @@ void ExcluiProduto(ListaProduto *ListaExclusao, int opcExclusao) // FUNÇÃO PAR
         {
             anterior->proximo = atual->proximo;
         }
+
         if (atual->proximo == NULL)
         {
             ListaExclusao->UltimoProduto = anterior;
         }
+
         free(atual);
         gotoxy(2, 21);
-        printf("Produto removido da posição %d com sucesso.\n", posicao);
+        printf("Produto com codigo %d removido com sucesso.\n", codigoProduto);
         RetornaMenu();
     }
     break;
 
-        //  REMOVE O PRODUTO NO INICIO
     case 3:
     {
         TipoApontadorProduto aux = ListaExclusao->PrimeiroProduto;
+
+        if (ExisteMovimentacao(aux->conteudo.cd_produto, ListaMov))
+        {
+            gotoxy(2, 21);
+            printf("Nao e possivel excluir o produto. Existem movimentacoes registradas.\n");
+            RetornaMenu();
+            return;
+        }
+
+        MostraMSG(" Deseja realmente excluir o produto? (S/N): ");
+        confirmacao = getch();
+
+        if (confirmacao != 'S' && confirmacao != 's')
+        {
+            LimparLinha(21);
+            gotoxy(2, 21);
+            printf("Operacao de exclusao cancelada.");
+            RetornaMenu();
+            return;
+        }
+
         ListaExclusao->PrimeiroProduto = ListaExclusao->PrimeiroProduto->proximo;
         if (ListaExclusao->PrimeiroProduto == NULL)
         {
@@ -676,24 +801,19 @@ void ExcluiProduto(ListaProduto *ListaExclusao, int opcExclusao) // FUNÇÃO PAR
         }
         free(aux);
         gotoxy(2, 21);
-        printf("Produto removido do início com sucesso.\n");
+        printf("Produto removido do inicio com sucesso.\n");
         RetornaMenu();
     }
     break;
 
     default:
-        printf("Opção de exclusão inválida.\n");
+        printf("Opcao de exclusao invalida.\n");
         break;
     }
 }
 
 void ExibirProduto(ListaProduto *ListaExibir, int opcExibir) // FUNÇÃO PARA EXIBIR OS PRODUTOS
 {
-    if (ListaExibir == NULL || ListaExibir->PrimeiroProduto == NULL)
-    {
-        TelaListaVazia("Exibir produtos");
-    }
-
     switch (opcExibir)
     {
         // EXIBE UM PRODUTO ESPECIFICO PELO CODIGO
@@ -737,7 +857,6 @@ void ExibirProduto(ListaProduto *ListaExibir, int opcExibir) // FUNÇÃO PARA EX
             gotoxy(5, 10);
             printf("+----------------------------------------------------------------------+\n");
 
-            TipoApontadorProduto Aux = ListaExibir->PrimeiroProduto->proximo;
             gotoxy(5, 11);
             printf("|"); // INICIO LISTA
             gotoxy(11, 11);
@@ -754,17 +873,17 @@ void ExibirProduto(ListaProduto *ListaExibir, int opcExibir) // FUNÇÃO PARA EX
             printf("|"); // FIM LISTA
 
             gotoxy(6, 11);
-            printf("%d", Aux->conteudo.cd_produto);
+            printf("%d", produto->conteudo.cd_produto);
             gotoxy(12, 11);
-            printf("%s", Aux->conteudo.ds_produto);
+            printf("%s", produto->conteudo.ds_produto);
             gotoxy(26, 11);
-            printf("%s", Aux->conteudo.ds_unid_med);
+            printf("%s", produto->conteudo.ds_unid_med);
             gotoxy(41, 11);
-            printf("%s", Aux->conteudo.dt_validade);
+            printf("%s", produto->conteudo.dt_validade);
             gotoxy(53, 11);
-            printf("%.2f", Aux->conteudo.vl_custo_medio);
+            printf("%.2f", produto->conteudo.vl_custo_medio);
             gotoxy(63, 11);
-            printf("%.2f", Aux->conteudo.vl_total);
+            printf("%.2f", produto->conteudo.vl_total);
 
             gotoxy(5, 12);
             printf("+----------------------------------------------------------------------+\n");
@@ -782,7 +901,7 @@ void ExibirProduto(ListaProduto *ListaExibir, int opcExibir) // FUNÇÃO PARA EX
     //  EXIBE OS PRODUTOS EM FICHARIOS
     case 2: // Exibir produtos do fichário
     {
-        TipoApontadorProduto aux = ListaExibir->PrimeiroProduto->proximo;
+        TipoApontadorProduto aux = ListaExibir->PrimeiroProduto;
         TipoApontadorProduto produtoAnterior = NULL;
 
         char comando;
@@ -886,23 +1005,16 @@ void ExibirProduto(ListaProduto *ListaExibir, int opcExibir) // FUNÇÃO PARA EX
     break;
 
     default:
-        printf("Opção de exclusão inválida.\n");
+        printf("Opcaoo de exclusao invalida.\n");
         break;
     }
 }
 
 void ExibeListaProdutos(ListaProduto *ListaOrdenada) //  FUNÇÃO PARA EXIBIR OS PRODUTOS ORDENADOS
 {
+
     system("cls");
     TelaBase("Lista de Produtos");
-
-    if (ListaOrdenada == NULL || ListaOrdenada->PrimeiroProduto == NULL)
-    {
-        gotoxy(10, 10);
-        printf("Nenhum produto cadastrado.\n");
-        return;
-    }
-
     gotoxy(5, 6);
     printf("+----------------------------------------------------------------------+\n");
     gotoxy(5, 7); // INICIO LISTA
@@ -978,11 +1090,6 @@ void ExibeListaProdutos(ListaProduto *ListaOrdenada) //  FUNÇÃO PARA EXIBIR OS
 
 void AlteraProduto(ListaProduto *ListaProdutos, int tipoAlteracao, int codigo) //  FUNÇÃO PARA ALTERAR O/OS PRODUTOS
 {
-    if (ListaProdutos == NULL || ListaProdutos->PrimeiroProduto == NULL)
-    {
-        printf("Lista de produtos vazia.\n");
-        return;
-    }
 
     TipoApontadorProduto produto = BuscaProdutoCodigo(ListaProdutos, codigo);
 
@@ -1023,9 +1130,12 @@ void AlteraProduto(ListaProduto *ListaProdutos, int tipoAlteracao, int codigo) /
             TelaBase("Alteração de Dt. Validade");
             gotoxy(20, 10);
             printf("Nova Data de Validade: ");
-            MostraMSG("Digite a data de validade: ");
-            fgets(produto->conteudo.dt_validade, sizeof(produto->conteudo.dt_validade), stdin);
-            produto->conteudo.dt_validade[strcspn(produto->conteudo.dt_validade, "\n")] = '\0'; // Remove o \n do final
+
+            char novaData[11];
+            VerificaData(novaData, "Nova Data de Validade: ");
+
+            strncpy(produto->conteudo.dt_validade, novaData, sizeof(produto->conteudo.dt_validade));
+            produto->conteudo.dt_validade[sizeof(produto->conteudo.dt_validade) - 1] = '\0'; // Garante que a string termine com '\0'
             break;
         default:
             printf("Campo invalido.\n");
@@ -1220,7 +1330,7 @@ void RegistraMovimentacao(ListaMovimentacao *ListaMovimentacoes, ListaProduto *L
     gotoxy(10, 16);
     printf("Valor total.........: ");
     gotoxy(10, 18);
-    printf("Data de validade.........: ");
+    printf("Data da movimentacao.........: ");
 
     int codigo = LerEntradaInteiro("Digite o codigo do produto: ");
     TipoApontadorProduto produto = BuscaProdutoCodigo(ListaProdutos, codigo);
@@ -1251,6 +1361,7 @@ void RegistraMovimentacao(ListaMovimentacao *ListaMovimentacoes, ListaProduto *L
 
     if (tipoMov == 's' && produto->conteudo.qt_produto < qtMov)
     {
+        gotoxy(2, 21);
         printf("Quantidade em estoque insulficiente para a saida. ");
         return;
     }
@@ -1262,12 +1373,12 @@ void RegistraMovimentacao(ListaMovimentacao *ListaMovimentacoes, ListaProduto *L
     printf("%.2f", qtMov * vlUnitMov);
 
     MovProduto novaMovimentacao;
-    MostraMSG(" Digite a data de validade: ");
-    scanf("%s", novaMovimentacao.dt_movim);
+    MostraMSG("Digite a data da movimentacao: ");
+    VerificaData(novaMovimentacao.dt_movim, "Digite a data da movimentacao: ");
     gotoxy(41, 18);
     printf("%s", novaMovimentacao.dt_movim);
 
-    novaMovimentacao.dc_prod_movim = codigo;
+    novaMovimentacao.cd_prod_movim = codigo;
     novaMovimentacao.tp_movim = tipoMov;
     novaMovimentacao.qt_movim = qtMov;
     novaMovimentacao.vl_unit_movim = vlUnitMov;
@@ -1286,34 +1397,148 @@ void RegistraMovimentacao(ListaMovimentacao *ListaMovimentacoes, ListaProduto *L
     {
         ListaMovimentacoes->Pri_movim = novaMov;
     }
-    if (tipoMov == 'e')
+    ListaMovimentacoes->Ult_movim = novaMov;
+
+    if (tipoMov == 'e') // Atualizar a quantidade e valores do produto
     {
+        // Calculando o novo custo médio
+        float valorEstoqueAtual = produto->conteudo.vl_total;
+        float quantidadeEstoqueAtual = produto->conteudo.qt_produto;
+
         produto->conteudo.qt_produto += qtMov;
+        produto->conteudo.vl_total += novaMovimentacao.vl_total_movim;
+
+        produto->conteudo.vl_custo_medio = (valorEstoqueAtual + (vlUnitMov * qtMov)) / produto->conteudo.qt_produto;
     }
     else if (tipoMov == 's')
     {
         produto->conteudo.qt_produto -= qtMov;
+        produto->conteudo.vl_total -= novaMovimentacao.vl_total_movim;
+        if (produto->conteudo.qt_produto > 0)
+        {
+            produto->conteudo.vl_custo_medio = produto->conteudo.vl_total / produto->conteudo.qt_produto;
+        }
+        else
+        {
+            produto->conteudo.vl_custo_medio = 0;
+            produto->conteudo.vl_total = 0;
+        }
     }
+
     gotoxy(2, 21);
-    printf("Movimentacao registraca com sucesso ");
+    printf("Movimentacao registrada com sucesso ");
     RetornaMenu();
 }
 
-void ExibirMovimentacoes(ListaMovimentacao *listaMov) // FUNÇÃO PARA EXIBIR AS MOVIMENTAÇÕES
+void ExibirMovimentacoes(ListaMovimentacao *listaMov, ListaProduto *ListaProdutos) // FUNÇÃO PARA EXIBIR AS MOVIMENTAÇÕES
 {
-    system("cls");
+
     if (listaMov->Pri_movim == NULL)
     {
-        printf("Nenhuma movimentacao registrada.\n");
+        TelaListaVazia("Exibe movimentacoes ");
         return;
     }
 
-    TipoApontadorMovimentacao atual = listaMov->Pri_movim;
+    system("cls");
+    TelaBase("Exibe movimentacoes");
+    int codigoProduto = LerEntradaInteiro("Digite o codigo do produto para exibir as movimentacoes: ");
+    TipoApontadorProduto produto = BuscaProdutoCodigo(ListaProdutos, codigoProduto);
+
+    if (produto != NULL)
+    {
+
+        gotoxy(5, 6);
+        printf("Lista de movimentacoes do produto %s - (%d)", produto->conteudo.ds_produto, produto->conteudo.cd_produto);
+        // Exibição das movimentações
+
+        gotoxy(5, 8);
+        printf("+--------------------------------------------------------------------+\n");
+        gotoxy(5, 9); // INICIO LISTA MOVIMENTAÇÕES / DATA MOVIMENTAÇÃO
+        printf("|");
+        gotoxy(19, 9); //   TIPO MOVIMENTAÇÃO
+        printf("|");
+        gotoxy(29, 9); //  QUANTIDADE MOVIMENTAÇÃO
+        printf("|");
+        gotoxy(39, 9); //  VALOR UNITARIO MOVIMENTAÇÃO
+        printf("|");
+        gotoxy(49, 9); //  VALOR TOTAL MOVIMENTAÇÃO
+        printf("|");
+        gotoxy(59, 9); //  CUSTO MÉDIO
+        printf("|");
+        gotoxy(74, 9); //  FINALIZAÇÃO MOVIMENTAÇÃO
+        printf("|");
+        gotoxy(5, 10);
+        printf("+--------------------------------------------------------------------+\n");
+
+        gotoxy(6, 9);
+        printf("DATA MOV");
+        gotoxy(20, 9);
+        printf("TIPO");
+        gotoxy(30, 9);
+        printf("QTDE");
+        gotoxy(40, 9);
+        printf("VL. UNIT");
+        gotoxy(50, 9);
+        printf("VL. TOTAL");
+        gotoxy(60, 9);
+        printf("CT. MEDIO");
+
+        int linha = 11;
+        TipoApontadorMovimentacao mov = listaMov->Pri_movim;
+        TipoApontadorProduto prod = ListaProdutos->PrimeiroProduto;
+
+        while (mov != NULL)
+        {
+            if (mov->ctMovimentacao.cd_prod_movim == codigoProduto)
+            {
+                gotoxy(5, linha);
+                printf("|");
+                gotoxy(19, linha);
+                printf("|");
+                gotoxy(29, linha);
+                printf("|");
+                gotoxy(39, linha);
+                printf("|");
+                gotoxy(49, linha);
+                printf("|");
+                gotoxy(59, linha);
+                printf("|");
+                gotoxy(74, linha);
+                printf("|");
+
+                gotoxy(6, linha);
+                printf("%s", mov->ctMovimentacao.dt_movim);
+                gotoxy(20, linha);
+                printf("%c", mov->ctMovimentacao.tp_movim);
+                gotoxy(30, linha);
+                printf("%.2f", mov->ctMovimentacao.qt_movim);
+                gotoxy(40, linha);
+                printf("%.2f", mov->ctMovimentacao.vl_unit_movim);
+                gotoxy(50, linha);
+                printf("%.2f", mov->ctMovimentacao.qt_movim * mov->ctMovimentacao.vl_unit_movim);
+                gotoxy(60, linha);
+                printf("%.2f", prod->conteudo.vl_custo_medio);
+
+                linha++;
+            }
+            mov = mov->movProximo;
+        }
+
+        gotoxy(5, linha);
+        printf("+--------------------------------------------------------------------+\n");
+    }
+    else
+    {
+        system("cls");
+        TelaBase("Produto nao encontrado");
+        gotoxy(10, 10);
+        printf("Produto com codigo '%d' nao encontrado.\n", codigoProduto);
+    }
 
     RetornaMenu();
 }
 
-void MenuProdutos(ListaProduto *ListaSimplesProduto) // MENU DE PRODUTOS
+void MenuProdutos(ListaProduto *ListaSimplesProduto, ListaMovimentacao *ListaMovimentacoes) // MENU DE PRODUTOS
 {
     int opcao;
     boolean controle = TRUE;
@@ -1338,15 +1563,15 @@ void MenuProdutos(ListaProduto *ListaSimplesProduto) // MENU DE PRODUTOS
             break;
 
         case 4:
-            ExcluiProduto(ListaSimplesProduto, 1);
+            ExcluiProduto(ListaSimplesProduto, ListaMovimentacoes, 1);
             break;
 
         case 5:
-            ExcluiProduto(ListaSimplesProduto, 2);
+            ExcluiProduto(ListaSimplesProduto, ListaMovimentacoes, 2);
             break;
 
         case 6:
-            ExcluiProduto(ListaSimplesProduto, 3);
+            ExcluiProduto(ListaSimplesProduto, ListaMovimentacoes, 3);
             break;
 
         case 7:
@@ -1358,7 +1583,7 @@ void MenuProdutos(ListaProduto *ListaSimplesProduto) // MENU DE PRODUTOS
             break;
 
         case 9:
-            gotoxy(10, 20);
+            gotoxy(2, 21);
             printf("Retornando ao menu inicial...\n");
             controle = FALSE;
             break;
@@ -1373,6 +1598,12 @@ void MenuAlteraProdutos(ListaProduto *ListaSimplesProduto) //  FUNÇÃO PARA ALT
 {
     int tipoAlteracao;
     int codigo;
+
+    if (ListaSimplesProduto == NULL || ListaSimplesProduto->PrimeiroProduto == NULL)
+    {
+        TelaListaVazia("Alterar produto");
+        return;
+    }
 
     do
     {
@@ -1401,6 +1632,13 @@ void MenuAlteraProdutos(ListaProduto *ListaSimplesProduto) //  FUNÇÃO PARA ALT
 void MenuListaProdutos(ListaProduto *ListaSimplesProduto) // FUNÇÃO DOS MENUS PARA EXIBIR PRODUTOS
 {
     int opcao;
+
+    if (ListaSimplesProduto == NULL || ListaSimplesProduto->PrimeiroProduto == NULL)
+    {
+        TelaListaVazia("Exibir produtos");
+        return;
+    }
+
     do
     {
         system("cls");
@@ -1471,7 +1709,7 @@ void MenuMovimentacoes(ListaMovimentacao *ListaMovimentacoes, ListaProduto *List
             break;
 
         case 2:
-            ExibirMovimentacoes(ListaMovimentacoes);
+            ExibirMovimentacoes(ListaMovimentacoes, ListaProdutos);
             break;
 
         case 3:
@@ -1499,7 +1737,7 @@ void MenuInicio() // FUNÇÃO DO MENU INICIAL
         switch (LerEntradaInteiro("Digite sua opcao: "))
         {
         case 1:
-            MenuProdutos(&ListaSimplesProduto);
+            MenuProdutos(&ListaSimplesProduto, &ListaMovProduto);
             break;
 
         case 2:
